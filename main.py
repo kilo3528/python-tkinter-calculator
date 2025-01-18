@@ -14,10 +14,15 @@ def button_click(symbol):
     if symbol == "=":
         try:
             result = eval(entry.get())  # Evaluate the expression
+            # Check if the result is an integer
+            if result.is_integer():
+                result = int(result)  # Convert to integer if it's a whole number
             entry.delete(0, tk.END)
             entry.insert(tk.END, str(result))  # Display the result
         except Exception as e:
-            messagebox.showerror("Error", "Invalid expression")  # Show an error message
+            messagebox.showerror("Error", "Invalid expression")  # Show an error if there's an issue
+
+
     elif symbol == "C":
         entry.delete(0, tk.END)  # Clear the entry field
     else:
