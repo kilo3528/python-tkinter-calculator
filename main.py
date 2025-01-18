@@ -1,37 +1,64 @@
 import tkinter as tk
 from tkinter import messagebox
 
-# History of inputs
+# History of inputs (store previous expressions)
 history = []
+history_pointer = -1  # Pointer to track the current position in the history
 
 def button_click(symbol):
+    global history_pointer
+
     entry.config(state="normal")  # Temporarily enable editing
 
     # Save history only before significant changes
     if symbol in ["=", "C", "+", "-", "*", "/"]:
+        # When an operator or "=" is pressed, save current state in history
         history.append(entry.get())
+        history_pointer = len(history) - 1  # Update the history pointer
 
     if symbol == "=":
         try:
             result = eval(entry.get())  # Evaluate the expression
-            # Check if the result is an integer
+            entry.delete(0, tk.END)
+            # Check if result is a whole number (not a float)
             if result.is_integer():
                 result = int(result)  # Convert to integer if it's a whole number
-            entry.delete(0, tk.END)
             entry.insert(tk.END, str(result))  # Display the result
         except Exception as e:
-            messagebox.showerror("Error", "Invalid expression")  # Show an error if there's an issue
-
-
+            messagebox.showerror("Error", "Invalid expression")  # Show an error message
     elif symbol == "C":
         entry.delete(0, tk.END)  # Clear the entry field
+        history.clear()  # Clear history when the calculator is cleared
+        history_pointer = -1  # Reset history pointer
     else:
         entry.insert(tk.END, symbol)  # Add the symbol to the entry field
+
     entry.config(state="readonly")  # Lock editing
 
     # Trigger button animation
     animate_button(symbol)
 
+def undo():
+    global history_pointer
+
+    if history_pointer > 0:  # If the history has previous states
+        history_pointer -= 1  # Move the pointer back to the previous history item
+        previous_value = history[history_pointer]
+        entry.config(state="normal")
+        entry.delete(0, tk.END)
+        entry.insert(tk.END, previous_value)  # Restore previous value from history
+        entry.config(state="readonly")
+
+def redo():
+    global history_pointer
+
+    if history_pointer < len(history) - 1:  # If there's a next state in history
+        history_pointer += 1  # Move the pointer forward
+        next_value = history[history_pointer]
+        entry.config(state="normal")
+        entry.delete(0, tk.END)
+        entry.insert(tk.END, next_value)  # Restore next value from history
+        entry.config(state="readonly")
 
 # Function to handle keyboard presses
 def key_press(event):
@@ -39,6 +66,8 @@ def key_press(event):
     ctrl_pressed = (event.state & 0x4) != 0  # Check if Ctrl is pressed
     if ctrl_pressed and event.keysym.lower() == "z":  # Ctrl + Z for undo
         undo()
+    elif ctrl_pressed and event.keysym.lower() == "y":  # Ctrl + Y for redo
+        redo()
     elif key in "0123456789+-*/.":  # If it's a number or operator
         button_click(key)
     elif key == "\r":  # Enter key
@@ -50,7 +79,6 @@ def key_press(event):
         entry.config(state="readonly")
     elif key.lower() in ["c", "с"]:  # Latin "C" or Cyrillic "С"
         button_click("C")
-
 
 def animate_button(symbol):
     button = button_dict.get(symbol)
@@ -64,24 +92,6 @@ def animate_button(symbol):
         
         # Restore the colors after 100ms
         root.after(100, lambda: button.config(bg=original_colors[symbol], fg="#ffffff"))  # White text
-
-
-def undo():
-    if history:  # If the history is not empty
-        previous_value = history.pop()  # Get the last value
-        entry.config(state="normal")
-        entry.delete(0, tk.END)
-        entry.insert(tk.END, previous_value)
-        entry.config(state="readonly")
-
-
-def key_release(event):
-    symbol = event.char
-    button = button_dict.get(symbol)
-    if button:
-        # Restore the original color after releasing the key
-        button.config(bg=original_colors[symbol], fg="#ffffff")  # White text
-
 
 # Create the main window of the application
 root = tk.Tk()
@@ -97,7 +107,6 @@ entry.grid(row=0, column=0, columnspan=4, padx=10, pady=10, sticky="nsew")
 
 # Bind all keypress events to the key_press function
 root.bind("<Key>", key_press)
-root.bind("<KeyRelease>", key_release)
 
 # Calculator buttons (numbers and operators)
 buttons = [
@@ -112,7 +121,7 @@ button_dict = {}
 original_colors = {}
 
 # Colors setup
-digit_color = "#1f1e1d"  # Brown for digits
+digit_color = "#1f1e1d"  # Gray for digits
 operator_color = "#FF8C00"  # Orange for operators
 clear_color = "#FF0000"  # Red for "C"
 equal_color = "#008000"  # Green for "="
